@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>神ゲー()</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="tetris" width="200" height="400"></canvas>
+    <script>
+        const canvas = document.getElementById('tetris');
+        const context = canvas.getContext('2d');
+        const grid = 20;
+        const colors = [
+            null,
+            '#FF0D72',
+            '#0DC2FF',
+            '#0DFF72',
+            '#F538FF',
+            '#FF8E0D',
+            '#FFE138',
+            '#3877FF',
+        ];
+
+        // テトリミノの形状
+        const tetrominoes = [
+            [[1,1,1,1]], // I
+            //[[1,1,1],[1,0,0]], // L
+            //[[1,1,1],[0,0,1]], // J
+            //[[1,1],[1,1]], // O
+            //[[1,1,0],[0,1,1]], // S
+            //[[0,1,1],[1,1,0]], // Z
+            //[[1,1,1],[0,1,0]]  // T
+        ];
+
+        // ゲームボード
+        const board = Array(20).fill().map(() => Array(10).fill(0));
+        
+        let piece = {
+            x: 3,
+            y: 0,
+            shape: tetrominoes[Math.floor(Math.random() * tetrominoes.length)],
+            color: Math.floor(Math.random() * (colors.length - 1)) + 1
+        };
+
+        let dropCounter = 0;
+        let dropInterval = 10000; // 1秒
+        let lastTime = 0;
+
+        function drawSquare(x, y, color) {
+            context.fillStyle = color;
+            context.fillRect(x * grid, y * grid, grid - 2, grid - 2);
+        }
+
+        function drawBoard() {
+            context.fillStyle = '#000';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            
+            for (let y = 0; y < 20; y++) {
+                for (let x = 0; x < 10; x++) {
+                    if (board[y][x]) {
+                        drawSquare(x, y, colors[board[y][x]]);
+                    }
+                }
+            }
+        }
+
+        function drawPiece() {
+            piece.shape.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value) {
+                        drawSquare(piece.x + x, piece.y + y, colors[piece.color]);
+                    }
+                });
+            });
+        }
+
+        function collide() {
+            for (let y = 0; y < piece.shape.length; y++) {
+                for (let x = 0; x < piece.shape[y].length; x++) {
+                    if (piece.shape[y][x] && 
+                        (board[piece.y + y] && 
+                         board[piece.y + y][piece.x + x]) !== 0) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function merge() {
+            piece.shape.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value) {
+                        board[piece.y + y][piece.x + x] = piece.color;
+                    }
+                });
+            });
+        }
+
+        function createPiece() {
+            piece = {
+                x: 3,
+                y: 0,
+                shape: tetrominoes[Math.floor(Math.random() * tetrominoes.length)],
+                color: Math.floor(Math.random() * (colors.length - 1)) + 1
+            };
+        }
+
+        function drop() {
+            piece.y++;
+            if (collide()) {
+                piece.y--;
+                merge();
+                createPiece();
+                if (collide()) {
+                    board.forEach(row => row.fill(0));
+                }
+            }
+            dropCounter = 0;
+        }
+
+        function rotate() {
+            const rotated = piece.shape[0].map((_, index) =>
+                piece.shape.map(row => row[index]).reverse()
+            );
+            const previousShape = piece.shape;
+            piece.shape = rotated;
+            if (collide()) {
+                piece.shape = previousShape;
+            }
+        }
+
+        document.addEventListener('keydown', event => {
+            if (event.key === 'ArrowLeft') {
+                piece.x--;
+                if (collide()) piece.x++;
+            }
+            if (event.key === 'ArrowRight') {
+                piece.x++;
+                if (collide()) piece.x--;
+            }
+            if (event.key === 'ArrowDown') {
+                drop();
+            }
+            if (event.key === 'ArrowUp') {
+                rotate();
+            }
+        });
+
+        function update(time = 0) {
+            const deltaTime = time - lastTime;
+            lastTime = time;
+            
+            dropCounter += deltaTime;
+            if (dropCounter > dropInterval) {
+                drop();
+            }
+
+            drawBoard();
+            drawPiece();
+            requestAnimationFrame(update);
+        }
+
+        update();
+    </script>
+</body>
+</html>
